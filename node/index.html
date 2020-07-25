@@ -1,9 +1,58 @@
 <html>
 
-<head></head>
+<head>
+  <style>
+    body {
+      font-family: sans-serif
+    }
+
+    script {
+      display: block;
+      font-family: monospace;
+      color: #333;
+      white-space: pre;
+    }
+
+    code {
+      border-bottom: 1px solid #443;
+    }
+  </style>
+
+</head>
 
 <body>
   <h1>encodings</h1>
+
+  <script style="display: none">
+    const output = (name, text) =>
+      document.querySelector(`[data-out=${name}]`)
+        .innerText = text
+  </script>
+
+  <code>
+    <h2>Standard</h2>
+    <script>
+      fetch('/data')
+        .then(res => res.text())
+        .then(text => {
+          output('standard', text)
+        })
+    </script>
+    <output data-out="standard"></output>
+  </code>
+
+
+  <code>
+    <h2>chars</h2>
+    <script>
+      fetch('/data', { headers: { "content-encoding": 'chars' } })
+        .then(res => res.text())
+        .then(text => text.split(', ').map(c => String.fromCharCode(c)).join(''))
+        .then(text =>
+          output('chars', text))
+    </script>
+    <output data-out="chars"></output>
+  </code>
 </body>
 
 </html>
