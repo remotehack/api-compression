@@ -5,16 +5,26 @@ import (
 	"compress/zlib"
 	"encoding/json"
 	"fmt"
-	"github.com/NYTimes/gziphandler"
-	"github.com/vmihailenco/msgpack/v5"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/NYTimes/gziphandler"
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
+	"github.com/remotehack/api-compression/v2/pkg/noise"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
-const filename = `generated.json`
+func main() {
 
-func main(){
+	respondWithNoise()
+	return
+	respondWithSound()
+
 	withoutGz := http.HandlerFunc(respond)
 	withGz := gziphandler.GzipHandler(withoutGz)
 
@@ -23,6 +33,8 @@ func main(){
 
 	withZlib := http.HandlerFunc(respondWithZlib)
 	withZlibGzip := gziphandler.GzipHandler(withZlib)
+
+	//withSound := http.HandlerFunc(respondWithSound)
 
 	http.Handle("/hello", withoutGz)
 	http.Handle("/hellogz", withGz)
@@ -33,10 +45,10 @@ func main(){
 	http.Handle("/zlib", withZlib)
 	http.Handle("/zlibgz", withZlibGzip)
 
+	//http.Handle("/sound", withSound)
 
 	http.ListenAndServe(":8090", nil)
 }
-
 
 func logAndClose(file *os.File) {
 	err := file.Close()
@@ -46,7 +58,7 @@ func logAndClose(file *os.File) {
 }
 
 func respond(w http.ResponseWriter, req *http.Request) {
-	fc := fileContents()
+	fc := fileContents("generated.json")
 
 	fmt.Fprintf(w, string(fc))
 }
@@ -56,7 +68,7 @@ type Item struct {
 }
 
 func respondWithMsgPack(w http.ResponseWriter, req *http.Request) {
-	fc := fileContents()
+	fc := fileContents("generated.json")
 
 	var arbitraryUnmarshaledJson interface{}
 
@@ -77,7 +89,7 @@ func respondWithMsgPack(w http.ResponseWriter, req *http.Request) {
 }
 
 func respondWithZlib(w http.ResponseWriter, req *http.Request) {
-	fc := fileContents()
+	fc := fileContents("generated.json")
 
 	var b bytes.Buffer
 	zw := zlib.NewWriter(&b)
@@ -87,9 +99,28 @@ func respondWithZlib(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, b.String())
 }
 
+func respondWithSound() {
+	f, err := os.Open("Honk.mp3")
+	if err != nil {
+		log.Fatal("failed to open Honk")
+	}
 
+	streamer, format, err := mp3.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer streamer.Close()
+	done := make(chan bool)
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
-func fileContents() []byte {
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
+		done <- true
+	})))
+
+	<-done
+}
+
+func fileContents(filename string) []byte {
 	jsonFile, err := os.OpenFile(filename, os.O_RDONLY, 0600)
 	defer logAndClose(jsonFile)
 
@@ -102,4 +133,16 @@ func fileContents() []byte {
 		panic(err)
 	}
 	return fileContents
+}
+
+func respondWithNoise() {
+	fc := fileContents("generated.json")
+	ns := noise.New(fc)
+
+	fmt.Println("noise filled\n\n\n")
+
+	sr := beep.SampleRate(44100)
+	speaker.Init(sr, sr.N(time.Second/10))
+	speaker.Play(ns)
+	select {}
 }
