@@ -4,10 +4,18 @@ The original file of generated.json is being served from Go.
 
 The file size is 2,980,913 bytes.
 
-## Without Gzip
+## raw JSON Without Gzip
 
-2.84 MB (2.84 MB size)
+2,980,913 / 2,980,913
 
-## With Gzip
+## raw JSON With Gzip
 
-681.19 kB (2.84 MB size)
+697,371 / 2,980,913
+
+## MessagePack Without Gzip
+
+2,201,106 / 2,201,106
+
+## MessagePack With Gzip
+
+771,969 / 2,201,106
